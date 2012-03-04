@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:WindowedApplication xmlns:fx="http://ns.adobe.com/mxml/2009"
+					   xmlns:s="library://ns.adobe.com/flex/spark"
+					   xmlns:mx="library://ns.adobe.com/flex/mx"
+					   width="200"
+					   height="300"
+					   creationComplete="onCreationComplete(event)">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+
+	<fx:Script>
+		<![CDATA[
+			import com.potmo.util.image.BitmapUtil;
+			import com.potmo.util.image.RasterizedSequence;
+			import com.potmo.util.logger.Logger;
+			import com.potmo.util.text.TextUtil;
+
+			import mx.collections.ArrayCollection;
+			import mx.events.FlexEvent;
+			import mx.flash.ContainerMovieClip;
+			import mx.graphics.codec.PNGEncoder;
+			import mx.managers.DragManager;
+
+
+			protected function onCreationComplete( event:FlexEvent ):void
+			{
+				addEventListener( NativeDragEvent.NATIVE_DRAG_ENTER, onDragEnter );
+				addEventListener( NativeDragEvent.NATIVE_DRAG_DROP, onDrop );
+			}
+
+
+			private function onDrop( event:NativeDragEvent ):void
+			{
+				//get the array of files
+				var fileArray:Array = event.clipboard.getData( ClipboardFormats.FILE_LIST_FORMAT ) as Array;
+				var files:Vector.<File> = Vector.<File>( fileArray );
+
+				//grab the files file
+				var file:File = File( files[ 0 ] );
+
+				Logger.log( "Drop: " + file.url );
+
+				var swfRoot:DisplayObjectContainer = loadSwfFile( file );
+
+				//printChildren( swfRoot );
+
+			}
+
+
+			private function onDragEnter( event:NativeDragEvent ):void
+			{
+				//check and see if files are being drug in
+				if ( !event.clipboard.hasFormat( ClipboardFormats.FILE_LIST_FORMAT ) )
+				{
+					Logger.error( "Wrong cliboard format" );
+					return;
+				}
+
+				//get the array of files
+				var fileArray:Array = event.clipboard.getData( ClipboardFormats.FILE_LIST_FORMAT ) as Array;
+				var files:Vector.<File> = Vector.<File>( fileArray );
+
+				//make sure only one file is dragged in (i.e. this app doesn't
+				//support dragging in multiple files)
+				if ( files.length != 1 )
+				{
+					Logger.error( "too many files: " + files.length );
+					DragManager.showFeedback( DragManager.NONE );
+					return;
+				}
+
+				if ( files[ 0 ].extension != "swf" )
+				{
+					Logger.error( "wrong extension: " + files[ 0 ].extension );
+					DragManager.showFeedback( DragManager.NONE );
+					return;
+				}
+
+				//accept the drag action
+				Logger.log( "OK to drop" );
+				DragManager.showFeedback( DragManager.COPY );
+				DragManager.acceptDragDrop( this );
+
+			}
+
+
+			private function readFile( file:File ):ByteArray
+			{
+				//create a FileStream to work with the file
+				var fileStream:FileStream = new FileStream();
+
+				//open the file for reading
+				fileStream.open( file, FileMode.READ );
+
+				//read the bytes
+				var data:ByteArray = new ByteArray();
+				fileStream.readBytes( data, 0, fileStream.bytesAvailable );
+
+				//close the file
+				fileStream.close();
+
+				return data;
+			}
+
+
+			private function loadSwfFile( file:File ):DisplayObjectContainer
+			{
+				Logger.log( "Loading swf file" );
+				var loader:Loader = new Loader();
+				var data:ByteArray = readFile( file );
+				var context:LoaderContext = new LoaderContext( false, ApplicationDomain.currentDomain, null );
+				context.allowCodeImport = true;
+				loader.loadBytes( data, context );
+
+				loader.contentLoaderInfo.addEventListener( Event.INIT, onLoadedSwfpartiallyAccessable );
+
+				return loader;
+			}
+
+
+			private function printChildren( container:DisplayObjectContainer ):void
+			{
+				Logger.log( "Printing children" );
+
+				for ( var i:int = 0; i < container.numChildren; i++ )
+				{
+					var child:DisplayObject = container.getChildAt( i );
+
+					Logger.log( "Child: " + i + " " + child.name );
+
+					var sequence:RasterizedSequence = new RasterizedSequence( child );
+
+					printSequenceToFile( child.name, sequence );
+				}
+
+			}
+
+
+			protected function onLoadedSwfpartiallyAccessable( event:Event ):void
+			{
+				var moduleLoader:LoaderInfo = LoaderInfo( event.target );
+				moduleLoader.addEventListener( Event.COMPLETE, onSwfAccessable );
+
+			}
+
+
+			protected function onSwfAccessable( event:Event ):void
+			{
+				var loader:Loader = event.target.loader;
+				printChildren( loader.getChildAt( 0 ) as Sprite );
+
+			}
+
+
+			private function printSequenceToFile( clipName:String, sequence:RasterizedSequence ):void
+			{
+				var images:Vector.<BitmapData> = sequence.getImages();
+				var labels:Vector.<String> = sequence.getLables();
+				var pngenc:PNGEncoder = new PNGEncoder();
+
+				for ( var i:int = 0; i < images.length; i++ )
+				{
+
+					var image:BitmapData = images[ i ];
+					var label:String = labels[ i ];
+					var imgByteArray:ByteArray = pngenc.encode( image );
+
+					saveBytesToFile( imgByteArray, "testImageSequence/" + clipName, TextUtil.prependZeroes( i.toString(), 5 ) + "_" + label );
+
+				}
+			}
+
+
+			private function saveBytesToFile( imgByteArray:ByteArray, folder:String, fileName:String ):void
+			{
+				var fl:File = File.desktopDirectory.resolvePath( folder + "/" + fileName + ".png" );
+
+				Logger.log( "Save to file: " + fl.url );
+
+				var fs:FileStream = new FileStream();
+
+				try
+				{
+					//open file in write mode
+					fs.open( fl, FileMode.WRITE );
+					//write bytes from the byte array
+					fs.writeBytes( imgByteArray );
+					//close the file
+					fs.close();
+				}
+				catch ( e:Error )
+				{
+					Logger.error( e.message );
+				}
+			}
+		]]>
+	</fx:Script>
+
+	<s:Label x="10"
+			 y="10"
+			 text="Drag swf file here"/>
+</s:WindowedApplication>
