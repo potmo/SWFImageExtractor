@@ -22,6 +22,13 @@
 			import mx.graphics.codec.PNGEncoder;
 			import mx.managers.DragManager;
 
+			private var inputFile:File; // swf file
+			private var exportLocation:File; // directory
+			private var swfToPrint:Sprite;
+			private var printWhenLoaded:Boolean;
+			[Bindable]
+			private var outputListItems:ArrayCollection;
+
 
 			protected function onCreationComplete( event:FlexEvent ):void
 			{
@@ -36,15 +43,13 @@
 				var fileArray:Array = event.clipboard.getData( ClipboardFormats.FILE_LIST_FORMAT ) as Array;
 				var files:Vector.<File> = Vector.<File>( fileArray );
 
-				//grab the files file
-				var file:File = File( files[ 0 ] );
+				inputFile = files[ 0 ];
+				Logger.log( "Drop: " + inputFile.url );
 
-				Logger.log( "Drop: " + file.url );
+				inputFileLabel.text = inputFile.name;
 
-				var swfRoot:DisplayObjectContainer = loadSwfFile( file );
-
-				//printChildren( swfRoot );
-
+				printWhenLoaded = false;
+				loadSwfFile( inputFile );
 			}
 
 
@@ -121,6 +126,11 @@
 
 			private function printChildren( container:DisplayObjectContainer ):void
 			{
+				if ( container == null )
+				{
+					Logger.error( "Nothing to print" );
+					return;
+				}
 				Logger.log( "Printing children" );
 
 				for ( var i:int = 0; i < container.numChildren; i++ )
@@ -148,7 +158,21 @@
 			protected function onSwfAccessable( event:Event ):void
 			{
 				var loader:Loader = event.target.loader;
-				printChildren( loader.getChildAt( 0 ) as Sprite );
+
+				swfToPrint = loader.getChildAt( 0 ) as Sprite;
+
+				outputListItems = new ArrayCollection();
+
+				for ( var i:int = 0; i < swfToPrint.numChildren; i++ )
+				{
+					outputListItems.addItem( swfToPrint.getChildAt( i ).name );
+				}
+
+				if ( printWhenLoaded )
+				{
+					printWhenLoaded = false;
+					printChildren( swfToPrint );
+				}
 
 			}
 
@@ -166,15 +190,17 @@
 					var label:String = labels[ i ];
 					var imgByteArray:ByteArray = pngenc.encode( image );
 
-					saveBytesToFile( imgByteArray, "testImageSequence/" + clipName, TextUtil.prependZeroes( i.toString(), 5 ) + "_" + label );
-
+					saveBytesToFile( imgByteArray, exportLocation.url + "/" + clipName, TextUtil.prependZeroes( i.toString(), 5 ) + "_" + label );
 				}
+
 			}
 
 
 			private function saveBytesToFile( imgByteArray:ByteArray, folder:String, fileName:String ):void
 			{
-				var fl:File = File.desktopDirectory.resolvePath( folder + "/" + fileName + ".png" );
+				//var fl:File = File.desktopDirectory.resolvePath( folder + "/" + fileName + ".png" );
+
+				var fl:File = new File( folder + "/" + fileName + ".png" );
 
 				Logger.log( "Save to file: " + fl.url );
 
@@ -194,10 +220,75 @@
 					Logger.error( e.message );
 				}
 			}
+
+
+			protected function onExportClicked( event:MouseEvent ):void
+			{
+				if ( !inputFile )
+				{
+					return;
+				}
+
+				if ( exportLocation == null )
+				{
+					showBrowseForExportLocation();
+					return;
+				}
+
+				printWhenLoaded = true;
+				loadSwfFile( inputFile );
+
+			}
+
+
+			protected function outputClicked( event:MouseEvent ):void
+			{
+				showBrowseForExportLocation();
+
+			}
+
+
+			private function showBrowseForExportLocation():void
+			{
+				var file:File = new File();
+				file.browseForDirectory( "Export to location" );
+				file.addEventListener( Event.SELECT, onSelectExportLocation );
+
+			}
+
+
+			private function onSelectExportLocation( event:Event ):void
+			{
+				exportLocation = ( event.target ) as File;
+				exportLocationInput.text = exportLocation.url;
+			}
 		]]>
 	</fx:Script>
 
-	<s:Label x="10"
-			 y="10"
-			 text="Drag swf file here"/>
+	<s:Label id="inputFileLabel"
+			 left="10"
+			 right="10"
+			 top="10"
+			 height="25"
+			 backgroundColor="#C4C4C4"
+			 text="Drag swf file here"
+			 textAlign="left"
+			 verticalAlign="middle"/>
+	<s:Button right="10"
+			  bottom="10"
+			  label="Export"
+			  click="onExportClicked(event)"
+			  id="exportButton"/>
+	<s:Label id="exportLocationInput"
+			 left="10"
+			 bottom="9"
+			 width="102"
+			 right="{exportButton.right + exportButton.width + 10}"
+			 click="outputClicked(event)"/>
+	<s:List left="10"
+			right="10"
+			top="43"
+			bottom="39"
+			dataProvider="{outputListItems}">
+	</s:List>
 </s:WindowedApplication>
