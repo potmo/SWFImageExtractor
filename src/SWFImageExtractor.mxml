@@ -24,7 +24,7 @@
 
 			private var inputFile:File; // swf file
 			private var exportLocation:File; // directory
-			private var swfToPrint:Sprite;
+
 			private var printWhenLoaded:Boolean;
 			[Bindable]
 			private var outputListItems:ArrayCollection;
@@ -159,7 +159,7 @@
 			{
 				var loader:Loader = event.target.loader;
 
-				swfToPrint = loader.getChildAt( 0 ) as Sprite;
+				var swfToPrint:Sprite = loader.getChildAt( 0 ) as Sprite;
 
 				outputListItems = new ArrayCollection();
 
