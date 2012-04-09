@@ -11,6 +11,9 @@
 
 	<fx:Script>
 		<![CDATA[
+			import com.potmo.imagextractor.FramePacker;
+			import com.potmo.imagextractor.PacketFrames;
+			import com.potmo.imagextractor.Rasterizer;
 			import com.potmo.util.image.BitmapUtil;
 			import com.potmo.util.image.RasterizedSequence;
 			import com.potmo.util.logger.Logger;
@@ -133,9 +136,13 @@
 				}
 				Logger.log( "Printing children" );
 
+				var displayObjects:Vector.<DisplayObject> = new Vector.<DisplayObject>();
+
 				for ( var i:int = 0; i < container.numChildren; i++ )
 				{
 					var child:DisplayObject = container.getChildAt( i );
+
+					displayObjects.push( child );
 
 					Logger.log( "Child: " + i + " " + child.name );
 
@@ -143,6 +150,21 @@
 
 					printSequenceToFile( child.name, sequence );
 				}
+
+				var packer:FramePacker = new FramePacker();
+
+				Logger.info( "saving packed image" );
+				var atlas:PacketFrames = packer.rasterizeAndPack( displayObjects );
+
+				var encoder:PNGEncoder = new PNGEncoder();
+
+				var imgByteArray:ByteArray = encoder.encode( atlas.getImage() );
+
+				saveBytesToFile( imgByteArray, exportLocation.url + "/" + "pack", "atlas.png" );
+
+				var xmlByteArray:ByteArray = new ByteArray();
+				xmlByteArray.writeUTF( atlas.getXML().toXMLString() );
+				saveBytesToFile( xmlByteArray, exportLocation.url + "/" + "pack", "atlas.xml" );
 
 			}
 
@@ -190,7 +212,7 @@
 					var label:String = labels[ i ];
 					var imgByteArray:ByteArray = pngenc.encode( image );
 
-					saveBytesToFile( imgByteArray, exportLocation.url + "/" + clipName, TextUtil.prependZeroes( i.toString(), 5 ) + "_" + label );
+					saveBytesToFile( imgByteArray, exportLocation.url + "/" + clipName, TextUtil.prependZeroes( i.toString(), 5 ) + "_" + label + ".png" );
 				}
 
 			}
@@ -200,7 +222,7 @@
 			{
 				//var fl:File = File.desktopDirectory.resolvePath( folder + "/" + fileName + ".png" );
 
-				var fl:File = new File( folder + "/" + fileName + ".png" );
+				var fl:File = new File( folder + "/" + fileName );
 
 				Logger.log( "Save to file: " + fl.url );
 
