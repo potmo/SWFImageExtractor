@@ -151,7 +151,8 @@ package com.potmo.imagextractor
 
 		public function toString():String
 		{
-			return "{name:" + _name + ", label:" + _label + ", frame: " + _frame + ", width:" + _textureSourceRect.width + ", height: " + _textureSourceRect.height + ", regpoint:" + _regpoint + ", offset: " + _textureInSpriteOffset + "}"
+			//return "{name:" + _name + ", label:" + _label + ", frame: " + _frame + ", width:" + _textureSourceRect.width + ", height: " + _textureSourceRect.height + ", regpoint:" + _regpoint + ", offset: " + _textureInSpriteOffset + "}"
+			return "{name: " + _name + ", frame:" + _frame + "}";
 		}
 
 

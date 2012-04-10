@@ -4,6 +4,7 @@ package com.potmo.imagextractor
 	import com.potmo.util.logger.Logger;
 	import com.potmo.util.math.StrictMath;
 	import com.potmo.util.packing.MaxRectBinPacker;
+	import com.potmo.util.packing.PackRectangle;
 
 	import flash.display.BitmapData;
 	import flash.display.DisplayObject;
@@ -13,7 +14,6 @@ package com.potmo.imagextractor
 
 	public class FramePacker
 	{
-		private var _packer:MaxRectBinPacker;
 		private var _rasterizer:Rasterizer;
 
 		private static const MAX_WIDTH:int = 2048;
@@ -23,7 +23,7 @@ package com.potmo.imagextractor
 
 		public function FramePacker()
 		{
-			_packer = new MaxRectBinPacker( MAX_WIDTH, MAX_HEIGHT );
+
 			_rasterizer = new Rasterizer();
 		}
 
@@ -56,18 +56,18 @@ package com.potmo.imagextractor
 			var output:Vector.<RasterizedFrame> = new Vector.<RasterizedFrame>();
 
 			//find all like
-			for ( var i:int = frames.length - 1; i >= 0; i-- )
+			while ( frames.length > 0 )
 			{
 
 				// get a item that is not a duplicate
-				var original:RasterizedFrame = frames[ i ];
+				var original:RasterizedFrame = frames[ 0 ];
 
-				Logger.info( "Adding real frame: " + original );
+				Logger.info( "Adding real frame : " + original );
 
 				// add the frame to output
 				output.push( original );
 				// remove
-				frames.splice( i, 1 );
+				frames.splice( 0, 1 );
 
 				// frames that are already alias can be skipped (should not be any but anyway)
 				if ( original.isAlias() )
@@ -90,10 +90,10 @@ package com.potmo.imagextractor
 					// both images is identical in both width, height and pixels
 					if ( originalImage.compare( potentialDuplicateImage ) == 0 )
 					{
-						Logger.info( "Found duplicate: " + original + " is equal to " + potentialDuplicate );
+						//Logger.info( "Found duplicate: " + original + " is equal to " + potentialDuplicate );
 
 						// remove from frames
-						frames.splice( i, 1 );
+						frames.splice( j, 1 );
 
 						// remove from frames
 						var frameToBeAlias:RasterizedFrame = potentialDuplicate;
@@ -101,6 +101,7 @@ package com.potmo.imagextractor
 
 						// create a alias and add the new aliased frame
 						var alias:RasterizedFrame = RasterizedFrame.createAlias( frameToBeAlias, frameThatShouldBeAliased );
+						Logger.info( "Adding alias frame: " + alias );
 						output.push( alias );
 					}
 				}
@@ -143,7 +144,7 @@ package com.potmo.imagextractor
 
 		private function getDescriptorXml( frames:Vector.<RasterizedFrame> ):XML
 		{
-			var xml:XML = XML( "<?xml version=\"1.0\" encoding=\"UTF-8\"?><atlas></atlas>" );
+			var xml:XML = XML( "<atlas></atlas>" );
 			xml.appendChild( <metadata></metadata> );
 			xml.metadata.appendChild( <date>{getDateString()}</date> );
 			xml.metadata.appendChild( <padding>{PADDING}</padding> );
@@ -164,25 +165,40 @@ package com.potmo.imagextractor
 		{
 			frames.sort( frameSizeComparator );
 
-			_packer.allowFlip = false;
+			var packer:MaxRectBinPacker = new MaxRectBinPacker( MAX_WIDTH, MAX_HEIGHT );
+			packer.allowFlip = false;
+
 			Logger.info( "Starting to pack: " + frames.length + " frames" );
 
 			var frame:RasterizedFrame;
 
-			// pack images
-			for each ( frame in frames )
+			// get rects to pack
+			var packRects:Vector.<PackRectangle> = new Vector.<PackRectangle>();
+
+			for ( var i:int = 0; i < frames.length; i++ )
 			{
 				// do not print any frames that are aliases
+				frame = frames[ i ];
+
 				if ( frame.isAlias() )
 				{
 					continue;
 				}
 
 				// insert into packer
-				var newPosition:Rectangle = _packer.insert( frame.getTextureSourceRect().width, frame.getTextureSourceRect().height, MaxRectBinPacker.METHOD_RECT_BEST_AREA_FIT );
+				/*var newPosition:Rectangle = _packer.insert( frame.getTextureSourceRect().width, frame.getTextureSourceRect().height, MaxRectBinPacker.METHOD_RECT_BEST_AREA_FIT );
+				   frame.setTextureSourceRect( newPosition );*/
+				var packRect:PackRectangle = PackRectangle.fromRegularRectangle( frame.getTextureSourceRect(), i );
+				packRects.push( packRect );
 
-				frame.setTextureSourceRect( newPosition );
+			}
 
+			var packedRects:Vector.<PackRectangle> = packer.insertMany( packRects, MaxRectBinPacker.METHOD_RECT_BEST_AREA_FIT );
+
+			for each ( var packedRect:PackRectangle in packedRects )
+			{
+				frame = frames[ packedRect.getId() ];
+				frame.setTextureSourceRect( packedRect.toRegularRectangle() );
 			}
 
 			// find the smallest frame to put them in

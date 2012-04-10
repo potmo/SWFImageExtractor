@@ -175,7 +175,7 @@
 					saveBytesToFile( imgByteArray, exportLocation.url, "atlas.png" );
 
 					var xmlByteArray:ByteArray = new ByteArray();
-					xmlByteArray.writeUTF( atlas.getXML().toXMLString() );
+					xmlByteArray.writeUTFBytes( atlas.getXML().toXMLString() );
 					saveBytesToFile( xmlByteArray, exportLocation.url, "atlas.xml" );
 				}
 
