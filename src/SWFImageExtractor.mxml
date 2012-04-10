@@ -2,8 +2,8 @@
 <s:WindowedApplication xmlns:fx="http://ns.adobe.com/mxml/2009"
 					   xmlns:s="library://ns.adobe.com/flex/spark"
 					   xmlns:mx="library://ns.adobe.com/flex/mx"
-					   width="200"
-					   height="300"
+					   width="336"
+					   height="398"
 					   creationComplete="onCreationComplete(event)">
 	<fx:Declarations>
 		<!-- Place non-visual elements (e.g., services, value objects) here -->
@@ -140,31 +140,44 @@
 
 				for ( var i:int = 0; i < container.numChildren; i++ )
 				{
-					var child:DisplayObject = container.getChildAt( i );
+					var object:DisplayObject = container.getChildAt( i );
 
-					displayObjects.push( child );
-
-					Logger.log( "Child: " + i + " " + child.name );
-
-					var sequence:RasterizedSequence = new RasterizedSequence( child );
-
-					printSequenceToFile( child.name, sequence );
+					displayObjects.push( object );
 				}
 
-				var packer:FramePacker = new FramePacker();
+				if ( imagesCheckbox.selected )
+				{
+					Logger.log( "Printing images" );
 
-				Logger.info( "saving packed image" );
-				var atlas:PacketFrames = packer.rasterizeAndPack( displayObjects );
+					for each ( var child:DisplayObject in displayObjects )
+					{
 
-				var encoder:PNGEncoder = new PNGEncoder();
+						Logger.log( "Child: " + i + " " + child.name );
 
-				var imgByteArray:ByteArray = encoder.encode( atlas.getImage() );
+						var sequence:RasterizedSequence = new RasterizedSequence( child );
 
-				saveBytesToFile( imgByteArray, exportLocation.url + "/" + "pack", "atlas.png" );
+						printSequenceToFile( child.name, sequence );
+					}
+				}
 
-				var xmlByteArray:ByteArray = new ByteArray();
-				xmlByteArray.writeUTF( atlas.getXML().toXMLString() );
-				saveBytesToFile( xmlByteArray, exportLocation.url + "/" + "pack", "atlas.xml" );
+				if ( atlasCheckbox.selected )
+				{
+					Logger.log( "Printing atlas" );
+					var packer:FramePacker = new FramePacker();
+
+					Logger.info( "saving packed image" );
+					var atlas:PacketFrames = packer.rasterizeAndPack( displayObjects );
+
+					var encoder:PNGEncoder = new PNGEncoder();
+
+					var imgByteArray:ByteArray = encoder.encode( atlas.getImage() );
+
+					saveBytesToFile( imgByteArray, exportLocation.url, "atlas.png" );
+
+					var xmlByteArray:ByteArray = new ByteArray();
+					xmlByteArray.writeUTF( atlas.getXML().toXMLString() );
+					saveBytesToFile( xmlByteArray, exportLocation.url, "atlas.xml" );
+				}
 
 			}
 
@@ -283,6 +296,8 @@
 			{
 				exportLocation = ( event.target ) as File;
 				exportLocationInput.text = exportLocation.url;
+				exportButton.label = "Export";
+
 			}
 		]]>
 	</fx:Script>
@@ -298,19 +313,29 @@
 			 verticalAlign="middle"/>
 	<s:Button right="10"
 			  bottom="10"
-			  label="Export"
+			  label="Browse export localtion"
 			  click="onExportClicked(event)"
 			  id="exportButton"/>
 	<s:Label id="exportLocationInput"
 			 left="10"
-			 bottom="9"
-			 width="102"
-			 right="{exportButton.right + exportButton.width + 10}"
+			 right="10"
+			 bottom="43"
+			 height="20"
 			 click="outputClicked(event)"/>
 	<s:List left="10"
 			right="10"
 			top="43"
-			bottom="39"
+			bottom="86"
 			dataProvider="{outputListItems}">
 	</s:List>
+	<s:CheckBox id="atlasCheckbox"
+				left="10"
+				bottom="65"
+				width="62"
+				label="Atlas"
+				selected="true"/>
+	<s:CheckBox id="imagesCheckbox"
+				left="76"
+				bottom="65"
+				label="images"/>
 </s:WindowedApplication>

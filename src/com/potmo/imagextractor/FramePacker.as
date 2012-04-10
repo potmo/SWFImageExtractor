@@ -18,7 +18,7 @@ package com.potmo.imagextractor
 
 		private static const MAX_WIDTH:int = 2048;
 		private static const MAX_HEIGHT:int = 2048;
-		private static const PADDING:int = 2;
+		private static const PADDING:int = 1;
 
 
 		public function FramePacker()
@@ -31,11 +31,13 @@ package com.potmo.imagextractor
 		public function rasterizeAndPack( displayObjects:Vector.<DisplayObject> ):PacketFrames
 		{
 			Logger.info( "Starting to rasterize: " + displayObjects.length + " objects" );
-			var frames:Vector.<RasterizedFrame> = _rasterizer.rasterize( displayObjects );
+			var frames:Vector.<RasterizedFrame>;
+
+			frames = _rasterizer.rasterize( displayObjects );
 
 			frames = trimTransparent( frames, PADDING );
 
-			//TODO: Remove duplicate images and make them aliases
+			frames = removeDuplicates( frames );
 
 			var image:BitmapData = pack( frames, PADDING );
 			var xml:XML = getDescriptorXml( frames );
@@ -43,6 +45,69 @@ package com.potmo.imagextractor
 			var packetFrames:PacketFrames = new PacketFrames( image, xml );
 
 			return packetFrames;
+
+		}
+
+
+		private function removeDuplicates( frames:Vector.<RasterizedFrame> ):Vector.<RasterizedFrame>
+		{
+
+			frames = frames.concat(); // clone
+			var output:Vector.<RasterizedFrame> = new Vector.<RasterizedFrame>();
+
+			//find all like
+			for ( var i:int = frames.length - 1; i >= 0; i-- )
+			{
+
+				// get a item that is not a duplicate
+				var original:RasterizedFrame = frames[ i ];
+
+				Logger.info( "Adding real frame: " + original );
+
+				// add the frame to output
+				output.push( original );
+				// remove
+				frames.splice( i, 1 );
+
+				// frames that are already alias can be skipped (should not be any but anyway)
+				if ( original.isAlias() )
+				{
+					continue;
+				}
+
+				// check for equality with all other frames
+				var originalImage:BitmapData = original.getImage();
+
+				var potentialDuplicateImage:BitmapData;
+				var potentialDuplicate:RasterizedFrame;
+
+				for ( var j:int = frames.length - 1; j >= 0; j-- )
+				{
+					potentialDuplicate = frames[ j ];
+					potentialDuplicateImage = potentialDuplicate.getImage();
+
+					// oddly the compare function returns a zero if
+					// both images is identical in both width, height and pixels
+					if ( originalImage.compare( potentialDuplicateImage ) == 0 )
+					{
+						Logger.info( "Found duplicate: " + original + " is equal to " + potentialDuplicate );
+
+						// remove from frames
+						frames.splice( i, 1 );
+
+						// remove from frames
+						var frameToBeAlias:RasterizedFrame = potentialDuplicate;
+						var frameThatShouldBeAliased:RasterizedFrame = original;
+
+						// create a alias and add the new aliased frame
+						var alias:RasterizedFrame = RasterizedFrame.createAlias( frameToBeAlias, frameThatShouldBeAliased );
+						output.push( alias );
+					}
+				}
+
+			}
+
+			return output;
 
 		}
 
@@ -60,13 +125,16 @@ package com.potmo.imagextractor
 				output.copyPixels( image, bounds, new Point( 0, 0 ) );
 				frame.setImage( output );
 
+				// add some padding
 				var rect:Rectangle = frame.getTextureSourceRect();
 				rect.width = output.width + padding * 2;
 				rect.height = output.height + padding * 2;
+				rect.x -= padding;
+				rect.y -= padding;
 				frame.setTextureSourceRect( rect );
 
-				// add some padding
-				frame.setTextureInSpriteOffset( new Point( rect.x + padding, rect.y + padding ) );
+				// set texture in sprite offset
+				frame.setTextureInSpriteOffset( new Point( bounds.x + padding, bounds.y + padding ) );
 
 			}
 			return frames;
@@ -86,7 +154,7 @@ package com.potmo.imagextractor
 				xml[ "frames" ][ 0 ].appendChild( frame.getXML() );
 			}
 
-			Logger.info( "XML:\n" + xml.toXMLString() );
+			//Logger.info( "XML:\n" + xml.toXMLString() );
 			return xml;
 
 		}
@@ -97,7 +165,6 @@ package com.potmo.imagextractor
 			frames.sort( frameSizeComparator );
 
 			_packer.allowFlip = false;
-			_packer.addEventListener( Event.COMPLETE, onCompletePacking );
 			Logger.info( "Starting to pack: " + frames.length + " frames" );
 
 			var frame:RasterizedFrame;
@@ -138,18 +205,29 @@ package com.potmo.imagextractor
 			totalCanvasRect.height = StrictMath.getNextPowerOfTwo( totalCanvasRect.height );
 
 			// blit to canvas
-			var image:BitmapData = new BitmapData( totalCanvasRect.width, totalCanvasRect.height, true, 0xFFCCCCCC );
+			var image:BitmapData = new BitmapData( totalCanvasRect.width, totalCanvasRect.height, true, 0x00000000 );
 
 			for each ( frame in frames )
 			{
 				// do not print any frames that are aliases
 				if ( frame.isAlias() )
 				{
+
 					continue;
 				}
 				// the image is smaller than the texture source rect so add padding
 				BitmapUtil.blit( image, frame.getImage(), frame.getTextureSourceRect().x + padding, frame.getTextureSourceRect().y + padding );
-				BitmapUtil.drawRectangle( frame.getTextureSourceRect().x + padding, frame.getTextureSourceRect().y + padding, frame.getTextureSourceRect().width - padding * 2, frame.getTextureSourceRect().height - padding * 2, 0xFFFF0000, image );
+
+					// draw bounds for debugging
+					//BitmapUtil.drawRectangle( frame.getTextureSourceRect().x + padding, frame.getTextureSourceRect().y + padding, frame.getTextureSourceRect().width - padding * 2, frame.getTextureSourceRect().height - padding * 2, 0xFFFF0000, image );
+
+					// draw regpoint for debugging
+					//var regpoint:Point = frame.getRegpoint().clone();
+					//var offset:Point = frame.getTextureInSpriteOffset();
+					//regpoint.x -= offset.x;
+					//regpoint.y -= offset.y;
+					//BitmapUtil.drawRectangle( frame.getTextureSourceRect().x + padding + regpoint.x - 1, frame.getTextureSourceRect().y + padding + regpoint.y - 1, 2, 2, 0xFF00FF00, image );
+
 			}
 
 			return image;
@@ -177,10 +255,5 @@ package com.potmo.imagextractor
 
 		}
 
-
-		private function onCompletePacking( event:Event ):void
-		{
-			Logger.info( "Complete packing" );
-		}
 	}
 }

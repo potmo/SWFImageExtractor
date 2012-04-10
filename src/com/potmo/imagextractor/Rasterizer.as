@@ -66,7 +66,8 @@ package com.potmo.imagextractor
 			var bounds:Rectangle = bounds = displayObject.getBounds( displayObject );
 			var image:BitmapData = BitmapUtil.rasterizeDisplayObject( displayObject, bounds );
 
-			var frame:RasterizedFrame = new RealRasterizedFrame();
+			var frame:RasterizedFrame = new RasterizedFrame();
+			frame.setAlias( false );
 			frame.setFrame( 0 );
 			frame.setLabel( "" );
 			frame.setName( displayObject.name );
@@ -94,7 +95,8 @@ package com.potmo.imagextractor
 				clip.gotoAndStop( frameNum );
 
 				var image:BitmapData = BitmapUtil.rasterizeDisplayObject( clip, bounds );
-				var frame:RasterizedFrame = new RealRasterizedFrame();
+				var frame:RasterizedFrame = new RasterizedFrame();
+				frame.setAlias( false );
 				frame.setFrame( frameNum - 1 );
 				frame.setName( clip.name )
 				frame.setRegpoint( new Point( -bounds.x, -bounds.y ) );
