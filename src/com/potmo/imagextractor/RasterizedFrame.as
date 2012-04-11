@@ -144,6 +144,8 @@ package com.potmo.imagextractor
 					<textureheight>{_textureSourceRect.height}</textureheight>
 					<offsetx>{_textureInSpriteOffset.x}</offsetx>
 					<offsety>{_textureInSpriteOffset.y}</offsety>
+					<spritewidth>{_spriteBounds.width}</spritewidth>
+					<spriteheight>{_spriteBounds.height}</spriteheight>
 					<isalias>{_alias}</isalias>
 				</frame>;
 		}

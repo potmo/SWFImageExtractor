@@ -5,6 +5,7 @@ package com.potmo.imagextractor
 
 	import flash.display.BitmapData;
 	import flash.display.DisplayObject;
+	import flash.display.FrameLabel;
 	import flash.display.MovieClip;
 	import flash.geom.Point;
 	import flash.geom.Rectangle;
@@ -88,6 +89,7 @@ package com.potmo.imagextractor
 
 			var frames:int = clip.totalFrames;
 			var frameNum:int = frames + 1;
+
 			var labels:Array = clip.currentLabels;
 
 			while ( --frameNum >= 1 )
@@ -104,17 +106,29 @@ package com.potmo.imagextractor
 				frame.setSpriteBounds( new Rectangle( 0, 0, bounds.width, bounds.height ) );
 				frame.setLabel( "" );
 				frame.setImage( image );
-
-				if ( labels.length < frameNum - 1 )
-				{
-					var label:String = labels[ frameNum - 1 ];
-					frame.setLabel( label ? label : "" );
-				}
+				var label:String = findLabelForFrame( frameNum, labels );
+				frame.setLabel( label );
 
 				out.push( frame );
 			}
 
 			return out;
 		}
+
+
+		private function findLabelForFrame( frame:int, labels:Array /*of FrameLabel*/ ):String
+		{
+			for each ( var label:FrameLabel in labels )
+			{
+				if ( label.frame == frame )
+				{
+					return label.name;
+				}
+			}
+
+			return "";
+		}
+
 	}
+
 }
