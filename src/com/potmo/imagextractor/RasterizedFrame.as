@@ -9,12 +9,13 @@ package com.potmo.imagextractor
 		private var _frame:int = -1;
 		private var _label:String = "";
 		private var _textureSourceRect:Rectangle = null;
-		private var _regpoint:Point = null;
-		private var _name:String = "";
+		private var _regpoint:Point = new Point( 0, 0 );
+		private var _name:String = "XXXXXX";
 		private var _image:BitmapData;
 		private var _spriteBounds:Rectangle;
-		private var _textureInSpriteOffset:Point;
-		private var _alias:Boolean;
+		private var _textureInSpriteOffset:Point = new Point( 0, 0 );
+		private var _alias:Boolean = false;
+		private var _aliasFor:RasterizedFrame = null;
 
 
 		public function RasterizedFrame()
@@ -130,6 +131,13 @@ package com.potmo.imagextractor
 		}
 
 
+		public function setAliasFor( sourceFrame:RasterizedFrame ):void
+		{
+			_aliasFor = sourceFrame;
+
+		}
+
+
 		public function getXML():XML
 		{
 			return <frame>
@@ -154,29 +162,35 @@ package com.potmo.imagextractor
 		public function toString():String
 		{
 			//return "{name:" + _name + ", label:" + _label + ", frame: " + _frame + ", width:" + _textureSourceRect.width + ", height: " + _textureSourceRect.height + ", regpoint:" + _regpoint + ", offset: " + _textureInSpriteOffset + "}"
-			return "{name: " + _name + ", frame:" + _frame + "}";
+			return "{name: " + _name + ", frame:" + _frame + ", label: " + _label + "}";
 		}
 
 
-		public static function createAlias( frameToBeAlias:RasterizedFrame, frameThatShouldBeAliased:RasterizedFrame ):RasterizedFrame
+		public static function createAlias( aliasFrame:RasterizedFrame, sourceFrame:RasterizedFrame ):RasterizedFrame
 		{
 			var alias:RasterizedFrame = new RasterizedFrame();
 			alias.setAlias( true );
-			alias.setFrame( frameToBeAlias.getFrame() );
+			alias.setAliasFor( sourceFrame );
+			alias.setFrame( aliasFrame.getFrame() );
 			// skip image
-			alias.setLabel( frameToBeAlias.getLabel() );
-			alias.setName( frameToBeAlias.getName() );
-			alias.setRegpoint( frameToBeAlias.getRegpoint().clone() );
-			alias.setSpriteBounds( frameToBeAlias.getSpriteBounds().clone() );
-			var aliasOffset:Point = frameToBeAlias.getTextureInSpriteOffset().clone();
-			var offset:Point = frameThatShouldBeAliased.getTextureInSpriteOffset().clone();
-
-			aliasOffset.x = aliasOffset.x - offset.x + aliasOffset.x;
-			aliasOffset.y = aliasOffset.y - offset.y + aliasOffset.y;
-
-			alias.setTextureInSpriteOffset( aliasOffset );
-			alias.setTextureSourceRect( frameThatShouldBeAliased.getTextureSourceRect() ); // do not clone this one
+			alias.setLabel( aliasFrame.getLabel() );
+			alias.setName( aliasFrame.getName() );
+			alias.setRegpoint( aliasFrame.getRegpoint().clone() );
+			alias.setSpriteBounds( aliasFrame.getSpriteBounds().clone() );
+			alias.setImage( sourceFrame.getImage().clone() );
+			alias.setTextureInSpriteOffset( aliasFrame.getTextureInSpriteOffset().clone() );
+			alias.setTextureSourceRect( sourceFrame.getTextureSourceRect() ); // do not clone this one. just point reference
 			return alias;
+		}
+
+
+		public function updateFromAliasSource():void
+		{
+			if ( !isAlias() )
+			{
+				throw new Error( "Can no update when not an alias" );
+			}
+			this.setTextureSourceRect( _aliasFor.getTextureSourceRect() );
 		}
 
 	}

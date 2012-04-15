@@ -122,20 +122,20 @@ package com.potmo.imagextractor
 
 				// trim transparent pixels
 				var bounds:Rectangle = image.getColorBoundsRect( 0xFF000000, 0x00000000, false );
-				var output:BitmapData = new BitmapData( bounds.width, bounds.height, true );
-				output.copyPixels( image, bounds, new Point( 0, 0 ) );
+				var output:BitmapData = new BitmapData( bounds.width + padding * 2, bounds.height + padding * 2, true, 0x00000000 );
+				output.copyPixels( image, bounds, new Point( padding, padding ) );
 				frame.setImage( output );
 
 				// add some padding
 				var rect:Rectangle = frame.getTextureSourceRect();
-				rect.width = output.width + padding * 2;
-				rect.height = output.height + padding * 2;
-				rect.x -= padding;
+				rect.width = output.width;
+				rect.height = output.height;
+				rect.x -= padding; // this does'nt really matter since it will be moved when packed
 				rect.y -= padding;
 				frame.setTextureSourceRect( rect );
 
 				// set texture in sprite offset
-				frame.setTextureInSpriteOffset( new Point( bounds.x + padding, bounds.y + padding ) );
+				frame.setTextureInSpriteOffset( new Point( bounds.x - padding + 1, bounds.y - padding + 1 ) );
 
 			}
 			return frames;
@@ -186,8 +186,6 @@ package com.potmo.imagextractor
 				}
 
 				// insert into packer
-				/*var newPosition:Rectangle = _packer.insert( frame.getTextureSourceRect().width, frame.getTextureSourceRect().height, MaxRectBinPacker.METHOD_RECT_BEST_AREA_FIT );
-				   frame.setTextureSourceRect( newPosition );*/
 				var packRect:PackRectangle = PackRectangle.fromRegularRectangle( frame.getTextureSourceRect(), i );
 				packRects.push( packRect );
 
@@ -199,6 +197,15 @@ package com.potmo.imagextractor
 			{
 				frame = frames[ packedRect.getId() ];
 				frame.setTextureSourceRect( packedRect.toRegularRectangle() );
+			}
+
+			// update aliases from originals
+			for each ( frame in frames )
+			{
+				if ( frame.isAlias() )
+				{
+					frame.updateFromAliasSource();
+				}
 			}
 
 			// find the smallest frame to put them in
@@ -232,18 +239,18 @@ package com.potmo.imagextractor
 					continue;
 				}
 				// the image is smaller than the texture source rect so add padding
-				BitmapUtil.blit( image, frame.getImage(), frame.getTextureSourceRect().x + padding, frame.getTextureSourceRect().y + padding );
+				BitmapUtil.blit( image, frame.getImage(), frame.getTextureSourceRect().x, frame.getTextureSourceRect().y );
 
 					// draw bounds for debugging
-					//BitmapUtil.drawRectangle( frame.getTextureSourceRect().x + padding, frame.getTextureSourceRect().y + padding, frame.getTextureSourceRect().width - padding * 2, frame.getTextureSourceRect().height - padding * 2, 0xFFFF0000, image );
+					//	BitmapUtil.drawRectangle( frame.getTextureSourceRect().x, frame.getTextureSourceRect().y, frame.getTextureSourceRect().width, frame.getTextureSourceRect().height, 0x66FF0000, image );
 
 					// draw regpoint for debugging
-					//var regpoint:Point = frame.getRegpoint().clone();
-					//var offset:Point = frame.getTextureInSpriteOffset();
-					//regpoint.x -= offset.x;
-					//regpoint.y -= offset.y;
-					//BitmapUtil.drawRectangle( frame.getTextureSourceRect().x + padding + regpoint.x - 1, frame.getTextureSourceRect().y + padding + regpoint.y - 1, 2, 2, 0xFF00FF00, image );
-
+				/*var regpoint:Point = frame.getRegpoint().clone();
+				   var offset:Point = frame.getTextureInSpriteOffset();
+				   regpoint.x -= offset.x;
+				   regpoint.y -= offset.y;
+				   BitmapUtil.drawRectangle( frame.getTextureSourceRect().x + regpoint.x - 1, frame.getTextureSourceRect().y + regpoint.y - 1, 3, 3, 0x6600FF00, image );
+				 */
 			}
 
 			return image;
